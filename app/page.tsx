@@ -159,7 +159,7 @@ type Approval = {
 };
 
 export default function HomePage() {
-  const API = "http://localhost:5000";
+  const API = "https://counting-dashboard-backend.onrender.com";
 
   const [message, setMessage] = useState<Msg>(null);
   const [approver, setApprover] = useState("");
