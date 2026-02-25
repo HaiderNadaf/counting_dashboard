@@ -2,326 +2,247 @@
 
 // import { useEffect, useState } from "react";
 
-// type Msg = { id: string; body: string; receipt?: string } | null;
+// type Msg = {
+//   id: string;
+//   body: { truck_number?: string; count?: number } | null;
+//   receipt?: string;
+// } | null;
 
-// type Approval = {
-//   messageId: string;
-//   body: string;
-//   approver: string;
-//   approvedAt: string;
+// type Row = {
+//   _id?: string;
+//   truck_number: string;
+//   count: number;
+//   updated: number;
 // };
 
 // export default function HomePage() {
 //   const API = "http://localhost:5000";
 
 //   const [message, setMessage] = useState<Msg>(null);
-//   const [approver, setApprover] = useState("");
-//   const [loadingFetch, setLoadingFetch] = useState(false);
-//   const [approving, setApproving] = useState(false);
-//   const [approvals, setApprovals] = useState<Approval[]>([]);
-
-//   useEffect(() => {
-//     fetchCachedMessage();
-//     fetchApprovals();
-//   }, []);
-
-//   async function fetchCachedMessage() {
-//     try {
-//       const res = await fetch(`${API}/message`, { cache: "no-store" });
-//       const data = await res.json();
-//       setMessage(data);
-//     } catch {}
-//   }
-
-//   async function fetchNext() {
-//     if (loadingFetch) return;
-
-//     setLoadingFetch(true);
-//     try {
-//       const res = await fetch(`${API}/fetch`, { method: "POST" });
-//       const data = await res.json();
-//       setMessage(data || null);
-//     } catch {
-//     } finally {
-//       setLoadingFetch(false);
-//     }
-//   }
-
-//   async function fetchApprovals() {
-//     try {
-//       const res = await fetch(`${API}/approvals`);
-//       const data = await res.json();
-//       setApprovals(data);
-//     } catch {}
-//   }
-
-//   async function approve() {
-//     if (!message || approving) return;
-
-//     setApproving(true);
-
-//     try {
-//       const res = await fetch(`${API}/approve`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({
-//           approver,
-//           message, // ⭐ IMPORTANT
-//         }),
-//       });
-
-//       const data = await res.json();
-
-//       setMessage(null);
-
-//       if (data.next) setMessage(data.next);
-
-//       setApprover("");
-//       fetchApprovals();
-//     } catch (e) {
-//       console.log(e);
-//     } finally {
-//       setApproving(false);
-//     }
-//   }
-
-//   return (
-//     <div className="h-screen grid grid-cols-1 md:grid-cols-2 bg-black">
-//       <div className="relative w-full h-full">
-//         <iframe
-//           className="w-full h-full"
-//           src="https://country-delight.markhet.app/youtube"
-//           title="Stream"
-//         />
-//       </div>
-
-//       <div className="flex items-start justify-center p-6 bg-gray-900">
-//         <div className="w-full max-w-md bg-white/10 border rounded-2xl p-6 text-center">
-//           <button
-//             onClick={fetchNext}
-//             disabled={loadingFetch || approving}
-//             className="mb-3 w-full py-2 rounded bg-indigo-600 text-white"
-//           >
-//             {loadingFetch ? "Loading..." : "Fetch Next Message"}
-//           </button>
-
-//           {!message && <p className="text-gray-400">No message</p>}
-
-//           {message && (
-//             <div className="bg-black/40 p-4 rounded mb-3 text-left">
-//               <div className="text-white text-sm">{message.id}</div>
-//               <pre className="text-white text-sm">{message.body}</pre>
-//             </div>
-//           )}
-
-//           <input
-//             value={approver}
-//             onChange={(e) => setApprover(e.target.value)}
-//             placeholder="Approver"
-//             className="w-full p-3 rounded mb-3 bg-white/5 text-white"
-//           />
-
-//           <button
-//             onClick={approve}
-//             disabled={!message || approving}
-//             className="w-full py-3 rounded bg-blue-600 text-white"
-//           >
-//             {approving ? "Approving..." : "Approve & Fetch Next"}
-//           </button>
-
-//           <hr className="my-4 border-gray-700" />
-
-//           <div className="text-left max-h-40 overflow-auto">
-//             {approvals.map((a, i) => (
-//               <div key={i} className="mb-2 p-2 bg-black/30 rounded">
-//                 <div className="text-xs text-gray-400">{a.messageId}</div>
-//                 <div className="text-white text-sm">{a.body}</div>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// "use client";
-
-// import { useEffect, useState } from "react";
-
-// type Msg = { id: string; body: string; receipt?: string } | null;
-
-// type Approval = {
-//   messageId: string;
-//   body: string;
-//   approver: string;
-//   approvedAt: string;
-// };
-
-// export default function HomePage() {
-//   const API = "https://counting-dashboard-backend.onrender.com";
-
-//   const [message, setMessage] = useState<Msg>(null);
-//   const [approver, setApprover] = useState("");
-//   const [loadingFetch, setLoadingFetch] = useState(false);
-//   const [approving, setApproving] = useState(false);
-//   const [approvals, setApprovals] = useState<Approval[]>([]);
-
-//   // ⭐ STREAM STATE (only added)
+//   const [approveValue, setApproveValue] = useState("");
+//   const [rows, setRows] = useState<Row[]>([]);
+//   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+//   const [editValue, setEditValue] = useState("");
 //   const [videoUrl, setVideoUrl] = useState("");
+//   const [purging, setPurging] = useState(false);
 
 //   useEffect(() => {
 //     fetchCachedMessage();
-//     fetchApprovals();
-//   }, []);
-
-//   // ⭐ STREAM POLLING (only added)
-//   useEffect(() => {
 //     fetchStream();
-
-//     const interval = setInterval(fetchStream, 10000);
-//     return () => clearInterval(interval);
+//     const i = setInterval(fetchStream, 10000);
+//     return () => clearInterval(i);
 //   }, []);
 
 //   async function fetchCachedMessage() {
-//     try {
-//       const res = await fetch(`${API}/message`, { cache: "no-store" });
-//       const data = await res.json();
-//       setMessage(data);
-//     } catch {}
+//     const res = await fetch(`${API}/message`, { cache: "no-store" });
+//     setMessage(await res.json());
 //   }
 
 //   async function fetchNext() {
-//     if (loadingFetch) return;
-
-//     setLoadingFetch(true);
-//     try {
-//       const res = await fetch(`${API}/fetch`, { method: "POST" });
-//       const data = await res.json();
-//       setMessage(data || null);
-//     } catch {
-//     } finally {
-//       setLoadingFetch(false);
-//     }
-//   }
-
-//   async function fetchApprovals() {
-//     try {
-//       const res = await fetch(`${API}/approvals`);
-//       const data = await res.json();
-//       setApprovals(data);
-//     } catch {}
+//     const res = await fetch(`${API}/fetch`, { method: "POST" });
+//     setMessage(await res.json());
 //   }
 
 //   async function approve() {
-//     if (!message || approving) return;
+//     if (!message) return;
 
-//     setApproving(true);
+//     const parsed = message.body;
 
-//     try {
-//       const res = await fetch(`${API}/approve`, {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({
-//           approver,
-//           message,
-//         }),
-//       });
+//     const newRow: Row = {
+//       truck_number: parsed?.truck_number || "",
+//       count: Number(parsed?.count),
+//       updated: Number(approveValue),
+//     };
 
-//       const data = await res.json();
+//     setRows((p) => [...p, newRow]);
 
-//       setMessage(null);
+//     await fetch(`${API}/approve`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify({ approvedValue: approveValue, message }),
+//     });
 
-//       if (data.next) setMessage(data.next);
+//     setApproveValue("");
 
-//       setApprover("");
-//       fetchApprovals();
-//     } catch (e) {
-//       console.log(e);
-//     } finally {
-//       setApproving(false);
-//     }
+//     const next = await fetch(`${API}/fetch`, { method: "POST" });
+//     setMessage(await next.json());
 //   }
 
-//   // ⭐ STREAM FETCH (only added)
+//   async function purgeQueue() {
+//     if (purging) return;
+//     if (!confirm("Clear queue?")) return;
+
+//     setPurging(true);
+
+//     await fetch(`${API}/deleteAll`, { method: "POST" });
+
+//     setRows([]);
+//     setMessage(null);
+
+//     setPurging(false);
+//   }
+
+//   async function saveEdit(index: number) {
+//     const row = rows[index];
+
+//     if (row._id) {
+//       await fetch(`${API}/approval/${row._id}`, {
+//         method: "PUT",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ approved_count: Number(editValue) }),
+//       });
+//     }
+
+//     setRows((r) =>
+//       r.map((x, i) => (i === index ? { ...x, updated: Number(editValue) } : x)),
+//     );
+
+//     setEditingIndex(null);
+//     setEditValue("");
+//   }
+
 //   async function fetchStream() {
 //     try {
 //       const res = await fetch("https://country-delight.markhet.app/youtube", {
 //         cache: "no-store",
 //       });
-
 //       const data = await res.json();
-//       if (!data.youtube_url) return;
 
+//       if (!data.youtube_url) return;
 //       const id = new URL(data.youtube_url).searchParams.get("v");
 //       if (!id) return;
 
-//       const embed = `https://www.youtube.com/embed/${id}`;
-
-//       setVideoUrl((prev) => (prev === embed ? prev : embed));
-//     } catch (e) {
-//       console.log("stream error", e);
-//     }
+//       setVideoUrl(`https://www.youtube.com/embed/${id}`);
+//     } catch {}
 //   }
+
+//   const total = rows.reduce((s, r) => s + r.updated, 0);
 
 //   return (
 //     <div className="h-screen grid grid-cols-1 md:grid-cols-2 bg-black">
-//       {/* LEFT STREAM */}
-//       <div className="relative w-full h-full">
-//         <iframe
-//           className="w-full h-full"
-//           src={videoUrl}
-//           title="Stream"
-//           allow="autoplay; encrypted-media"
-//           allowFullScreen
-//         />
-//       </div>
+//       {/* STREAM */}
+//       {videoUrl ? (
+//         <iframe className="w-full h-full" src={videoUrl} />
+//       ) : (
+//         <div className="flex items-center justify-center text-white/50">
+//           No stream
+//         </div>
+//       )}
 
-//       {/* RIGHT PANEL */}
-//       <div className="flex items-start justify-center p-6 bg-gray-900">
-//         <div className="w-full h-[full] max-w-md bg-white/10 border rounded-2xl p-6 text-center">
-//           <button
-//             onClick={fetchNext}
-//             disabled={loadingFetch || approving}
-//             className="mb-3 w-full py-2 rounded bg-indigo-600 text-white"
-//           >
-//             {loadingFetch ? "Loading..." : "Fetch Next Message"}
-//           </button>
+//       {/* RIGHT */}
+//       <div className="p-6 bg-gray-900 text-white space-y-6">
+//         <button
+//           onClick={fetchNext}
+//           className="w-full py-2 bg-indigo-600 rounded"
+//         >
+//           Fetch Next
+//         </button>
 
-//           {!message && <p className="text-gray-400">No message</p>}
+//         <button onClick={purgeQueue} className="w-full py-2 bg-red-600 rounded">
+//           {purging ? "Clearing..." : "Clear Queue"}
+//         </button>
 
-//           {message && (
-//             <div className="bg-black/40 p-4 rounded mb-3 text-left">
-//               <div className="text-white text-sm">{message.id}</div>
-//               <pre className="text-white text-sm">{message.body}</pre>
-//             </div>
+//         {/* CURRENT */}
+//         <div className="bg-white/10 p-4 rounded">
+//           <div className="font-bold mb-2">Current Truck</div>
+
+//           {message?.body ? (
+//             <table className="w-full text-sm">
+//               <thead>
+//                 <tr>
+//                   <th className="text-left p-2">Truck</th>
+//                   <th className="text-left p-2">Count</th>
+//                   <th className="text-left p-2">Approve</th>
+//                   <th />
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 <tr>
+//                   <td className="p-2">{message.body.truck_number}</td>
+//                   <td className="p-2">{message.body.count}</td>
+//                   <td className="p-2">
+//                     <input
+//                       value={approveValue}
+//                       onChange={(e) => setApproveValue(e.target.value)}
+//                       className="bg-black/40 p-2 rounded w-24"
+//                     />
+//                   </td>
+//                   <td>
+//                     <button
+//                       onClick={approve}
+//                       className="bg-blue-600 px-3 py-2 rounded"
+//                     >
+//                       Approve
+//                     </button>
+//                   </td>
+//                 </tr>
+//               </tbody>
+//             </table>
+//           ) : (
+//             <div>No message</div>
 //           )}
+//         </div>
 
-//           <input
-//             value={approver}
-//             onChange={(e) => setApprover(e.target.value)}
-//             placeholder="Approver"
-//             className="w-full p-3 rounded mb-3 bg-white/5 text-white"
-//           />
+//         {/* HISTORY */}
+//         <div className="bg-white/10 p-4 rounded">
+//           <div className="font-bold mb-2">Approved Trucks</div>
 
-//           <button
-//             onClick={approve}
-//             disabled={!message || approving}
-//             className="w-full py-3 rounded bg-blue-600 text-white"
-//           >
-//             {approving ? "Approving..." : "Approve & Fetch Next"}
-//           </button>
+//           <div className="h-64 overflow-auto border border-white/10 rounded">
+//             <table className="w-full text-sm">
+//               <thead className="sticky top-0 bg-gray-800">
+//                 <tr>
+//                   <th className="text-left p-2">Truck</th>
+//                   <th className="text-left p-2">Count</th>
+//                   <th className="text-left p-2">Updated</th>
+//                   <th className="text-left p-2">Action</th>
+//                 </tr>
+//               </thead>
 
-//           <hr className="my-4 border-gray-700" />
+//               <tbody>
+//                 {rows.map((r, i) => (
+//                   <tr key={i} className="border-b border-white/10">
+//                     <td className="p-2">{r.truck_number}</td>
+//                     <td className="p-2">{r.count}</td>
 
-//           <div className="text-left max-h-40 overflow-auto">
-//             {approvals.map((a, i) => (
-//               <div key={i} className="mb-2 p-2 bg-black/30 rounded">
-//                 <div className="text-xs text-gray-400">{a.messageId}</div>
-//                 <div className="text-white text-sm">{a.body}</div>
-//               </div>
-//             ))}
+//                     <td className="p-2">
+//                       {editingIndex === i ? (
+//                         <input
+//                           value={editValue}
+//                           onChange={(e) => setEditValue(e.target.value)}
+//                           className="bg-black/40 p-1 w-20 rounded"
+//                         />
+//                       ) : (
+//                         r.updated
+//                       )}
+//                     </td>
+
+//                     <td className="p-2">
+//                       {editingIndex === i ? (
+//                         <button
+//                           onClick={() => saveEdit(i)}
+//                           className="bg-green-600 px-2 py-1 rounded"
+//                         >
+//                           Save
+//                         </button>
+//                       ) : (
+//                         <button
+//                           onClick={() => {
+//                             setEditingIndex(i);
+//                             setEditValue(String(r.updated));
+//                           }}
+//                           className="bg-yellow-600 px-2 py-1 rounded"
+//                         >
+//                           Edit
+//                         </button>
+//                       )}
+//                     </td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
 //           </div>
+
+//           <div className="mt-3 font-bold">Total Updated Count: {total}</div>
 //         </div>
 //       </div>
 //     </div>
@@ -332,84 +253,105 @@
 
 import { useEffect, useState } from "react";
 
-type Msg = { id: string; body: string; receipt?: string } | null;
+type Msg = {
+  id: string;
+  body: { truck_number?: string; count?: number } | null;
+  receipt?: string;
+} | null;
 
 type Row = {
+  _id: string;
   truck_number: string;
   count: number;
   updated: number;
 };
 
 export default function HomePage() {
-  const API = "https://counting-dashboard-backend.onrender.com";
+  const API = "http://localhost:5000";
 
   const [message, setMessage] = useState<Msg>(null);
   const [approveValue, setApproveValue] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
-  const [loadingFetch, setLoadingFetch] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [purging, setPurging] = useState(false);
-
-  // stream
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [purging, setPurging] = useState(false);
 
   useEffect(() => {
     fetchCachedMessage();
     fetchStream();
-    const interval = setInterval(fetchStream, 10000);
-    return () => clearInterval(interval);
+    const i = setInterval(fetchStream, 10000);
+    return () => clearInterval(i);
   }, []);
 
   async function fetchCachedMessage() {
     const res = await fetch(`${API}/message`, { cache: "no-store" });
-    const data = await res.json();
-    setMessage(data);
+    setMessage(await res.json());
   }
 
   async function fetchNext() {
-    if (loadingFetch) return;
-    setLoadingFetch(true);
-
     const res = await fetch(`${API}/fetch`, { method: "POST" });
-    const data = await res.json();
-    setMessage(data || null);
-
-    setLoadingFetch(false);
+    setMessage(await res.json());
   }
 
+  /** ⭐ APPROVE (IMPORTANT FIX — stores DB id) */
   async function approve() {
-    if (!message || approving) return;
+    if (!message) return;
 
-    setApproving(true);
-
-    const parsed = JSON.parse(message.body);
-
-    // ⭐ push into history table
-    setRows((prev) => [
-      ...prev,
-      {
-        truck_number: parsed.truck_number,
-        count: Number(parsed.count),
-        updated: Number(approveValue),
-      },
-    ]);
-
-    await fetch(`${API}/approve`, {
+    const res = await fetch(`${API}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        approver: approveValue,
-        message,
-      }),
+      body: JSON.stringify({ approvedValue: approveValue, message }),
     });
+
+    const data = await res.json();
+
+    setRows((p) => [
+      ...p,
+      {
+        _id: data.record._id,
+        truck_number: data.record.truck_number,
+        count: data.record.original_count,
+        updated: data.record.approved_count,
+      },
+    ]);
 
     setApproveValue("");
 
     const next = await fetch(`${API}/fetch`, { method: "POST" });
-    const nextData = await next.json();
-    setMessage(nextData || null);
+    setMessage(await next.json());
+  }
 
-    setApproving(false);
+  async function purgeQueue() {
+    if (purging) return;
+    if (!confirm("Clear queue?")) return;
+
+    setPurging(true);
+
+    await fetch(`${API}/deleteAll`, { method: "POST" });
+
+    setRows([]);
+    setMessage(null);
+
+    setPurging(false);
+  }
+
+  /** ⭐ UPDATE (EDIT SAVE) */
+  async function saveEdit(index: number) {
+    const row = rows[index];
+
+    await fetch(`${API}/approval/${row._id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved_count: Number(editValue) }),
+    });
+
+    setRows((r) =>
+      r.map((x, i) => (i === index ? { ...x, updated: Number(editValue) } : x)),
+    );
+
+    setEditingIndex(null);
+    setEditValue("");
   }
 
   async function fetchStream() {
@@ -417,10 +359,9 @@ export default function HomePage() {
       const res = await fetch("https://country-delight.markhet.app/youtube", {
         cache: "no-store",
       });
-
       const data = await res.json();
-      if (!data.youtube_url) return;
 
+      if (!data.youtube_url) return;
       const id = new URL(data.youtube_url).searchParams.get("v");
       if (!id) return;
 
@@ -428,41 +369,18 @@ export default function HomePage() {
     } catch {}
   }
 
-  async function purgeQueue() {
-    if (purging) return;
-
-    const ok = confirm("Delete ALL SQS messages?");
-    if (!ok) return;
-
-    setPurging(true);
-
-    try {
-      const res = await fetch(`${API}/deleteAll`, {
-        method: "POST",
-      });
-
-      const data = await res.json();
-
-      console.log("purged:", data);
-
-      // clear UI
-      setRows([]);
-      setMessage(null);
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setPurging(false);
-    }
-  }
-
   const total = rows.reduce((s, r) => s + r.updated, 0);
-
-  const parsed = message ? JSON.parse(message.body) : null;
 
   return (
     <div className="h-screen grid grid-cols-1 md:grid-cols-2 bg-black">
-      {/* LEFT STREAM */}
-      <iframe className="w-full h-full" src={videoUrl} />
+      {/* STREAM */}
+      {videoUrl ? (
+        <iframe className="w-full h-full" src={videoUrl} />
+      ) : (
+        <div className="flex items-center justify-center text-white/50">
+          No stream
+        </div>
+      )}
 
       {/* RIGHT */}
       <div className="p-6 bg-gray-900 text-white space-y-6">
@@ -477,24 +395,24 @@ export default function HomePage() {
           {purging ? "Clearing..." : "Clear Queue"}
         </button>
 
-        {/* ⭐ TABLE 1 — CURRENT */}
+        {/* CURRENT */}
         <div className="bg-white/10 p-4 rounded">
           <div className="font-bold mb-2">Current Truck</div>
 
-          {parsed ? (
+          {message?.body ? (
             <table className="w-full text-sm">
               <thead>
                 <tr>
                   <th className="text-left p-2">Truck</th>
                   <th className="text-left p-2">Count</th>
                   <th className="text-left p-2">Approve</th>
-                  <th></th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td className="p-2">{parsed.truck_number}</td>
-                  <td className="p-2">{parsed.count}</td>
+                  <td className="p-2">{message.body.truck_number}</td>
+                  <td className="p-2">{message.body.count}</td>
                   <td className="p-2">
                     <input
                       value={approveValue}
@@ -518,60 +436,65 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* ⭐ TABLE 2 — HISTORY */}
-        {/* <div className="bg-white/10 p-4 rounded">
-          <div className="font-bold mb-2">Approved Trucks</div>
-
-          <table className="w-full text-sm">
-            <thead>
-              <tr>
-                <th className="text-left p-2">Truck</th>
-                <th className="text-left p-2">Count</th>
-                <th className="text-left p-2">Updated</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={i}>
-                  <td className="p-2">{r.truck_number}</td>
-                  <td className="p-2">{r.count}</td>
-                  <td className="p-2">{r.updated}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="mt-3 font-bold">Total Updated Count: {total}</div>
-        </div> */}
+        {/* HISTORY */}
         <div className="bg-white/10 p-4 rounded">
           <div className="font-bold mb-2">Approved Trucks</div>
 
-          {/* ⭐ fixed height scroll area */}
           <div className="h-64 overflow-auto border border-white/10 rounded">
             <table className="w-full text-sm">
-              {/* sticky header */}
               <thead className="sticky top-0 bg-gray-800">
                 <tr>
-                  <th className="text-left p-2 whitespace-nowrap">Truck</th>
-                  <th className="text-left p-2 whitespace-nowrap">Count</th>
-                  <th className="text-left p-2 whitespace-nowrap">Updated</th>
+                  <th className="text-left p-2">Truck</th>
+                  <th className="text-left p-2">Count</th>
+                  <th className="text-left p-2">Updated</th>
+                  <th className="text-left p-2">Action</th>
                 </tr>
               </thead>
 
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={i} className="border-b border-white/10">
-                    <td className="p-2 whitespace-nowrap">{r.truck_number}</td>
-                    <td className="p-2 whitespace-nowrap">{r.count}</td>
-                    <td className="p-2 whitespace-nowrap">{r.updated}</td>
+                  <tr key={r._id} className="border-b border-white/10">
+                    <td className="p-2">{r.truck_number}</td>
+                    <td className="p-2">{r.count}</td>
+
+                    <td className="p-2">
+                      {editingIndex === i ? (
+                        <input
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="bg-black/40 p-1 w-20 rounded"
+                        />
+                      ) : (
+                        r.updated
+                      )}
+                    </td>
+
+                    <td className="p-2">
+                      {editingIndex === i ? (
+                        <button
+                          onClick={() => saveEdit(i)}
+                          className="bg-green-600 px-2 py-1 rounded"
+                        >
+                          Save
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setEditingIndex(i);
+                            setEditValue(String(r.updated));
+                          }}
+                          className="bg-yellow-600 px-2 py-1 rounded"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          {/* total always visible */}
           <div className="mt-3 font-bold">Total Updated Count: {total}</div>
         </div>
       </div>
