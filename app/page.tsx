@@ -383,19 +383,50 @@ export default function HomePage() {
     setEditValue("");
   }
 
+  // async function fetchStream() {
+  //   try {
+  //     const res = await fetch("https://country-delight.markhet.app/youtube", {
+  //       headers: {
+  //         AWS_ACCESS_KEY_ID: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+  //         AWS_SECRET_ACCESS_KEY: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
+  //       },
+  //     });
+  //     const data = await res.json();
+
+  //     if (!data.youtube_url) return;
+  //     const id = new URL(data.youtube_url).searchParams.get("v");
+  //     if (!id) return;
+
+  //     setVideoUrl(`https://www.youtube.com/embed/${id}`);
+  //   } catch {}
+  // }
   async function fetchStream() {
     try {
+      const token = localStorage.getItem("token");
+
       const res = await fetch("https://country-delight.markhet.app/youtube", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         cache: "no-store",
       });
+
+      if (!res.ok) {
+        console.log("Not authenticated");
+        return;
+      }
+
       const data = await res.json();
 
       if (!data.youtube_url) return;
+
       const id = new URL(data.youtube_url).searchParams.get("v");
       if (!id) return;
 
       setVideoUrl(`https://www.youtube.com/embed/${id}`);
-    } catch {}
+    } catch (err) {
+      console.log(err);
+    }
   }
 
   const total = rows.reduce((s, r) => s + r.updated, 0);
