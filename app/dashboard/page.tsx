@@ -398,6 +398,527 @@
 //   );
 // }
 
+// "use client";
+
+// import { useEffect, useState } from "react";
+// import {
+//   Truck,
+//   CheckCircle2,
+//   Trash2,
+//   Edit2,
+//   Save,
+//   X,
+//   Loader2,
+// } from "lucide-react";
+
+// type Msg = {
+//   id: string;
+//   body: any;
+//   receipt?: string;
+// } | null;
+
+// type Row = {
+//   _id: string;
+//   truck_number: string;
+//   count: number;
+//   updated: number;
+//   createdAt: string;
+// };
+
+// export default function HomePage() {
+//   const API = process.env.NEXT_PUBLIC_API_URL;
+
+//   const [message, setMessage] = useState<Msg>(null);
+//   const [approveValue, setApproveValue] = useState("");
+//   const [rows, setRows] = useState<Row[]>([]);
+//   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+//   const [editValue, setEditValue] = useState("");
+//   const [videoUrl, setVideoUrl] = useState("");
+
+//   // Loading states
+//   const [loadingInitial, setLoadingInitial] = useState(true);
+//   const [loadingNext, setLoadingNext] = useState(false);
+//   const [loadingApprove, setLoadingApprove] = useState(false);
+//   const [loadingPurge, setLoadingPurge] = useState(false);
+//   const [loadingComplete, setLoadingComplete] = useState(false);
+//   const [loadingEdit, setLoadingEdit] = useState<number | null>(null); // per row
+
+//   const [purging, setPurging] = useState(false);
+//   const [showCompleteModal, setShowCompleteModal] = useState(false);
+//   const [completeTruck, setCompleteTruck] = useState("");
+//   const [completeDate, setCompleteDate] = useState("");
+
+//   useEffect(() => {
+//     const init = async () => {
+//       setLoadingInitial(true);
+//       await Promise.all([
+//         fetchCachedMessage(),
+//         fetchApprovals(),
+//         fetchStream(),
+//       ]);
+//       setLoadingInitial(false);
+//     };
+//     init();
+//   }, []);
+
+//   async function fetchCachedMessage() {
+//     try {
+//       const res = await fetch(`${API}/message`, { cache: "no-store" });
+//       if (res.ok) setMessage(await res.json());
+//     } catch {}
+//   }
+
+//   async function fetchNext() {
+//     setLoadingNext(true);
+//     try {
+//       const res = await fetch(`${API}/fetch`, { method: "POST" });
+//       if (res.ok) setMessage(await res.json());
+//     } catch {}
+//     setLoadingNext(false);
+//   }
+
+//   async function approve() {
+//     if (!message || loadingApprove) return;
+
+//     setLoadingApprove(true);
+//     try {
+//       const res = await fetch(`${API}/approve`, {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ approvedValue: approveValue, message }),
+//       });
+
+//       if (res.ok) {
+//         const data = await res.json();
+//         if (data.record) {
+//           await fetchApprovals();
+//         }
+//         setApproveValue("");
+
+//         // auto fetch next
+//         const next = await fetch(`${API}/fetch`, { method: "POST" });
+//         if (next.ok) setMessage(await next.json());
+//       }
+//     } catch {}
+//     setLoadingApprove(false);
+//   }
+
+//   async function fetchApprovals() {
+//     try {
+//       const res = await fetch(`${API}/approvals`);
+//       if (!res.ok) return;
+
+//       const data = await res.json();
+//       setRows(
+//         data.map((item: any) => ({
+//           _id: item._id || "",
+//           truck_number: item.truck_number || "—",
+//           count: item.original_count ?? 0,
+//           updated: item.approved_count ?? 0,
+//           createdAt: item.createdAt || item.updatedAt || item.date || "",
+//         })),
+//       );
+//     } catch {}
+//   }
+
+//   async function saveEdit(index: number) {
+//     const row = rows[index];
+//     const newValue = Number(editValue);
+//     if (isNaN(newValue)) return;
+
+//     setLoadingEdit(index);
+//     try {
+//       const res = await fetch(`${API}/approval/${row._id}`, {
+//         method: "PUT",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ approved_count: newValue }),
+//       });
+//       if (res.ok) {
+//         setRows((r) =>
+//           r.map((x, i) => (i === index ? { ...x, updated: newValue } : x)),
+//         );
+//         setEditingIndex(null);
+//         setEditValue("");
+//       }
+//     } catch {}
+//     setLoadingEdit(null);
+//   }
+
+//   async function purgeQueue() {
+//     if (loadingPurge) return;
+//     if (!confirm("Really clear the entire queue?")) return;
+
+//     setLoadingPurge(true);
+//     try {
+//       await fetch(`${API}/deleteAll`, { method: "POST" });
+//       setRows([]);
+//       setMessage(null);
+//     } catch {}
+//     setLoadingPurge(false);
+//   }
+
+//   function openCompleteModal() {
+//     if (!message?.body) return;
+//     setCompleteTruck(message.body.truck_number || "");
+//     setCompleteDate(new Date().toISOString().split("T")[0]);
+//     setShowCompleteModal(true);
+//   }
+
+//   async function confirmComplete() {
+//     setLoadingComplete(true);
+//     try {
+//       const res = await fetch(`${API}/totals/complete`, {
+//         method: "PUT",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({
+//           truck_number: completeTruck,
+//           date: completeDate,
+//         }),
+//       });
+//       if (res.ok) {
+//         setShowCompleteModal(false);
+//         alert("Truck marked as completed ✓");
+//         await fetchApprovals();
+//       } else {
+//         alert("Failed to mark as complete");
+//       }
+//     } catch {
+//       alert("Something went wrong");
+//     }
+//     setLoadingComplete(false);
+//   }
+
+//   async function fetchStream() {
+//     try {
+//       const token = localStorage.getItem("token");
+//       if (!token) return;
+
+//       const res = await fetch("https://country-delight.markhet.app/youtube", {
+//         headers: { Authorization: `Bearer ${token}` },
+//         cache: "no-store",
+//       });
+//       if (!res.ok) return;
+
+//       const data = await res.json();
+//       if (!data.youtube_url) return;
+
+//       const id = new URL(data.youtube_url).searchParams.get("v");
+//       if (id)
+//         setVideoUrl(`https://www.youtube.com/embed/${id}?autoplay=1&mute=1`);
+//     } catch {}
+//   }
+
+//   const total = rows.reduce((sum, r) => sum + r.updated, 0);
+
+//   const formatDate = (value?: string) => {
+//     if (!value || value.trim() === "") return "—";
+//     const date = new Date(value);
+//     if (isNaN(date.getTime()))
+//       return value.substring(0, 16).replace("T", " ") || "Invalid";
+//     return date
+//       .toLocaleString("en-IN", {
+//         year: "numeric",
+//         month: "short",
+//         day: "numeric",
+//         hour: "2-digit",
+//         minute: "2-digit",
+//         hour12: false,
+//       })
+//       .replace(",", "");
+//   };
+
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-gray-100 flex flex-col lg:flex-row">
+//       {/* Left – Video / Stream */}
+//       <div className="lg:w-3/5 h-[50vh] lg:h-screen relative">
+//         {videoUrl ? (
+//           <iframe
+//             src={videoUrl}
+//             allow="autoplay; fullscreen; picture-in-picture"
+//             allowFullScreen
+//             className="absolute inset-0 w-full h-full"
+//           />
+//         ) : (
+//           <div className="absolute inset-0 flex items-center justify-center text-gray-500 bg-black/40">
+//             <div className="text-center">
+//               <Truck className="w-12 h-12 mx-auto mb-4 opacity-50" />
+//               <p className="text-lg">No live stream available</p>
+//             </div>
+//           </div>
+//         )}
+//       </div>
+
+//       {/* Right – Controls & Data */}
+//       <div className="lg:w-2/5 flex flex-col h-[50vh] lg:h-screen overflow-hidden bg-gray-900/80 backdrop-blur-sm border-l border-gray-800">
+//         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+//           <h1 className="text-xl font-semibold flex items-center gap-2.5">
+//             <Truck className="w-6 h-6 text-emerald-400" />
+//             Truck Count Approval
+//           </h1>
+//           <div className="flex gap-2">
+//             <button
+//               onClick={fetchNext}
+//               disabled={loadingNext || loadingInitial}
+//               className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-600 rounded-lg transition text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+//             >
+//               {loadingNext && <Loader2 className="h-4 w-4 animate-spin" />}
+//               Fetch Next
+//             </button>
+
+//             <button
+//               onClick={purgeQueue}
+//               disabled={loadingPurge || loadingInitial}
+//               className="px-4 py-2 bg-red-600/70 hover:bg-red-600 rounded-lg transition text-sm font-medium disabled:opacity-50 flex items-center gap-1.5"
+//             >
+//               {loadingPurge ? (
+//                 <Loader2 className="h-4 w-4 animate-spin" />
+//               ) : (
+//                 <Trash2 size={16} />
+//               )}
+//               {loadingPurge ? "Clearing..." : "Purge"}
+//             </button>
+//           </div>
+//         </div>
+
+//         <div className="flex-1 p-5 space-y-6 overflow-y-auto">
+//           {/* Current Truck Card */}
+//           <div className="bg-gray-800/60 rounded-xl p-5 border border-gray-700/50">
+//             <h2 className="text-lg font-medium mb-4 flex items-center justify-between">
+//               <span className="text-emerald-400">Current</span>
+//               {loadingInitial && (
+//                 <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+//               )}
+//             </h2>
+
+//             {loadingInitial ? (
+//               <div className="py-10 flex items-center justify-center gap-3 text-gray-500">
+//                 <Loader2 className="h-6 w-6 animate-spin" />
+//                 Loading current truck...
+//               </div>
+//             ) : message?.body ? (
+//               <div className="flex gap-6 items-center text-sm">
+//                 <div>
+//                   <div className="text-gray-400 text-xs mb-0.5">Truck</div>
+//                   <div className="font-mono">{message.body.truck_number}</div>
+//                 </div>
+//                 <div>
+//                   <div className="text-gray-400 text-xs mb-0.5">Count</div>
+//                   <div className="font-semibold">{message.body.count}</div>
+//                 </div>
+//                 <div>
+//                   <div className="text-gray-400 text-xs mb-0.5">Approve</div>
+//                   <input
+//                     value={approveValue}
+//                     onChange={(e) => setApproveValue(e.target.value)}
+//                     onKeyDown={(e) => {
+//                       if (e.key === "Enter" && !loadingApprove) {
+//                         e.preventDefault();
+//                         approve();
+//                       }
+//                     }}
+//                     disabled={loadingApprove}
+//                     placeholder="Enter count"
+//                     className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 w-[90px] focus:outline-none focus:border-indigo-500/60 transition disabled:opacity-60"
+//                   />
+//                 </div>
+//                 <div className="flex gap-2">
+//                   <button
+//                     onClick={approve}
+//                     disabled={loadingApprove || !approveValue.trim()}
+//                     className="flex-1 bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 rounded-lg transition font-medium flex items-center justify-center gap-1.5 disabled:opacity-60"
+//                   >
+//                     {loadingApprove ? (
+//                       <Loader2 className="h-4 w-4 animate-spin" />
+//                     ) : (
+//                       <CheckCircle2 size={16} />
+//                     )}
+//                     Approve
+//                   </button>
+//                   <button
+//                     onClick={openCompleteModal}
+//                     disabled={loadingApprove}
+//                     className="flex-1 bg-emerald-600/80 hover:bg-emerald-600 px-4 py-2.5 rounded-lg transition font-medium disabled:opacity-60"
+//                   >
+//                     Complete
+//                   </button>
+//                 </div>
+//               </div>
+//             ) : (
+//               <div className="text-gray-500 py-8 text-center">
+//                 No message loaded
+//               </div>
+//             )}
+//           </div>
+
+//           {/* History Table */}
+//           <div className="bg-gray-800/40 rounded-xl border border-gray-700/50 overflow-hidden">
+//             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+//               <h2 className="font-medium flex items-center gap-2">
+//                 Approved Trucks
+//                 {/* Optional: show loading when refreshing approvals */}
+//                 {/* {loadingApprovals && <Loader2 className="h-4 w-4 animate-spin" />} */}
+//               </h2>
+//               <div className="text-sm text-emerald-400 font-medium">
+//                 Total: <span className="text-lg">{total}</span>
+//               </div>
+//             </div>
+
+//             <div className="max-h-[calc(100vh-380px)] overflow-auto">
+//               <table className="w-full text-sm">
+//                 <thead className="bg-gray-900/70 sticky top-0">
+//                   <tr>
+//                     <th className="text-left p-4 font-normal text-gray-400">
+//                       Truck
+//                     </th>
+//                     <th className="text-left p-4 font-normal text-gray-400">
+//                       Original
+//                     </th>
+//                     <th className="text-left p-4 font-normal text-gray-400">
+//                       Approved
+//                     </th>
+//                     <th className="text-left p-4 font-normal text-gray-400">
+//                       Date
+//                     </th>
+//                     <th className="w-24 p-4"></th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {rows.length === 0 ? (
+//                     <tr>
+//                       <td colSpan={5} className="p-8 text-center text-gray-500">
+//                         No approved trucks yet
+//                       </td>
+//                     </tr>
+//                   ) : (
+//                     rows.map((row, i) => (
+//                       <tr
+//                         key={row._id}
+//                         className="border-t border-gray-800 hover:bg-gray-800/40 transition"
+//                       >
+//                         <td className="p-4 font-mono">{row.truck_number}</td>
+//                         <td className="p-4">{row.count}</td>
+//                         <td className="p-4">
+//                           {editingIndex === i ? (
+//                             <input
+//                               autoFocus
+//                               value={editValue}
+//                               onChange={(e) => setEditValue(e.target.value)}
+//                               onKeyDown={(e) =>
+//                                 e.key === "Enter" && !loadingEdit && saveEdit(i)
+//                               }
+//                               disabled={loadingEdit !== null}
+//                               className="bg-gray-950 border border-gray-600 rounded px-2.5 py-1 w-20 focus:outline-none focus:border-indigo-500 disabled:opacity-60"
+//                             />
+//                           ) : (
+//                             <span className="font-medium">{row.updated}</span>
+//                           )}
+//                         </td>
+//                         <td className="p-4 text-gray-300">
+//                           {formatDate(row.createdAt)}
+//                         </td>
+//                         <td className="p-4">
+//                           {editingIndex === i ? (
+//                             <div className="flex gap-2">
+//                               <button
+//                                 onClick={() => saveEdit(i)}
+//                                 disabled={loadingEdit !== null}
+//                                 className="p-1.5 bg-emerald-600/70 hover:bg-emerald-600 rounded transition disabled:opacity-50"
+//                               >
+//                                 {loadingEdit === i ? (
+//                                   <Loader2 className="h-4 w-4 animate-spin" />
+//                                 ) : (
+//                                   <Save size={16} />
+//                                 )}
+//                               </button>
+//                               <button
+//                                 onClick={() => setEditingIndex(null)}
+//                                 disabled={loadingEdit !== null}
+//                                 className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded transition disabled:opacity-50"
+//                               >
+//                                 <X size={16} />
+//                               </button>
+//                             </div>
+//                           ) : (
+//                             <button
+//                               onClick={() => {
+//                                 setEditingIndex(i);
+//                                 setEditValue(String(row.updated));
+//                               }}
+//                               disabled={loadingEdit !== null}
+//                               className="p-1.5 bg-amber-600/60 hover:bg-amber-600 rounded transition disabled:opacity-50"
+//                             >
+//                               <Edit2 size={16} />
+//                             </button>
+//                           )}
+//                         </td>
+//                       </tr>
+//                     ))
+//                   )}
+//                 </tbody>
+//               </table>
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Complete Modal */}
+//       {showCompleteModal && (
+//         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+//           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+//             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+//               <CheckCircle2 className="text-emerald-400" />
+//               Mark Truck as Completed
+//             </h2>
+//             <div className="space-y-5">
+//               <div>
+//                 <label className="block text-sm text-gray-400 mb-1.5">
+//                   Truck Number
+//                 </label>
+//                 <input
+//                   value={completeTruck}
+//                   onChange={(e) => setCompleteTruck(e.target.value)}
+//                   disabled={loadingComplete}
+//                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500/60 disabled:opacity-60"
+//                 />
+//               </div>
+//               <div>
+//                 <label className="block text-sm text-gray-400 mb-1.5">
+//                   Completion Date
+//                 </label>
+//                 <input
+//                   type="date"
+//                   value={completeDate}
+//                   onChange={(e) => setCompleteDate(e.target.value)}
+//                   disabled={loadingComplete}
+//                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500/60 disabled:opacity-60"
+//                 />
+//               </div>
+//               <div className="flex justify-end gap-3 pt-4">
+//                 <button
+//                   onClick={() => setShowCompleteModal(false)}
+//                   disabled={loadingComplete}
+//                   className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition disabled:opacity-50"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={confirmComplete}
+//                   disabled={loadingComplete}
+//                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition font-medium flex items-center gap-2 disabled:opacity-50"
+//                 >
+//                   {loadingComplete && (
+//                     <Loader2 className="h-4 w-4 animate-spin" />
+//                   )}
+//                   Confirm Complete
+//                 </button>
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 "use client";
 
 import { useEffect, useState } from "react";
@@ -409,6 +930,8 @@ import {
   Save,
   X,
   Loader2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 type Msg = {
@@ -441,9 +964,12 @@ export default function HomePage() {
   const [loadingApprove, setLoadingApprove] = useState(false);
   const [loadingPurge, setLoadingPurge] = useState(false);
   const [loadingComplete, setLoadingComplete] = useState(false);
-  const [loadingEdit, setLoadingEdit] = useState<number | null>(null); // per row
+  const [loadingEdit, setLoadingEdit] = useState<number | null>(null);
 
-  const [purging, setPurging] = useState(false);
+  // Error and info states
+  const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
+
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [completeTruck, setCompleteTruck] = useState("");
   const [completeDate, setCompleteDate] = useState("");
@@ -461,45 +987,145 @@ export default function HomePage() {
     init();
   }, []);
 
+  // Auto-clear messages after 5 seconds
+  useEffect(() => {
+    if (errorMessage || infoMessage) {
+      const timer = setTimeout(() => {
+        setErrorMessage("");
+        setInfoMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [errorMessage, infoMessage]);
+
   async function fetchCachedMessage() {
     try {
       const res = await fetch(`${API}/message`, { cache: "no-store" });
-      if (res.ok) setMessage(await res.json());
-    } catch {}
+      if (res.ok) {
+        const data = await res.json();
+        setMessage(data);
+        // Don't auto-populate - leave empty for manual entry
+      }
+    } catch (err) {
+      console.error("Failed to fetch cached message:", err);
+    }
   }
 
   async function fetchNext() {
     setLoadingNext(true);
+    setErrorMessage("");
+    setInfoMessage("");
+
     try {
       const res = await fetch(`${API}/fetch`, { method: "POST" });
-      if (res.ok) setMessage(await res.json());
-    } catch {}
+
+      if (res.ok) {
+        const data = await res.json();
+
+        // Check if queue is empty
+        if (data?.empty) {
+          setMessage(null);
+          setApproveValue("");
+          setInfoMessage("Queue is empty - no messages available");
+          setLoadingNext(false);
+          return;
+        }
+
+        // Check if message was expired
+        if (data?.expired) {
+          setErrorMessage("Previous message expired. Fetched new message.");
+        }
+
+        setMessage(data);
+
+        // Don't auto-populate - leave empty for manual entry
+        setApproveValue("");
+
+        // Show info if duplicates were skipped (you can add this to backend response)
+        if (data?.skippedDuplicates > 0) {
+          setInfoMessage(
+            `Skipped ${data.skippedDuplicates} duplicate message(s)`,
+          );
+        }
+      } else if (res.status === 410) {
+        setErrorMessage("Message expired. Fetching new message...");
+        // Retry once
+        setTimeout(() => fetchNext(), 1000);
+      } else {
+        setErrorMessage("Failed to fetch next message");
+      }
+    } catch (err) {
+      setErrorMessage("Network error - failed to fetch message");
+      console.error("Fetch next error:", err);
+    }
+
     setLoadingNext(false);
   }
 
   async function approve() {
     if (!message || loadingApprove) return;
 
+    const approveCount = Number(approveValue);
+    if (isNaN(approveCount) || approveCount < 0) {
+      setErrorMessage("Please enter a valid count");
+      return;
+    }
+
     setLoadingApprove(true);
+    setErrorMessage("");
+    setInfoMessage("");
+
     try {
       const res = await fetch(`${API}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ approvedValue: approveValue, message }),
+        body: JSON.stringify({
+          approvedValue: approveCount,
+          message,
+        }),
       });
+
+      if (res.status === 410) {
+        // Message expired
+        setErrorMessage("Message expired. Please fetch a new message.");
+        setMessage(null);
+        setApproveValue("");
+        setLoadingApprove(false);
+        return;
+      }
 
       if (res.ok) {
         const data = await res.json();
-        if (data.record) {
-          await fetchApprovals();
-        }
-        setApproveValue("");
 
-        // auto fetch next
-        const next = await fetch(`${API}/fetch`, { method: "POST" });
-        if (next.ok) setMessage(await next.json());
+        if (data.record) {
+          // Refresh approvals list
+          await fetchApprovals();
+          setInfoMessage(
+            `✓ Approved: ${message.body.truck_number} - ${approveCount} items`,
+          );
+        }
+
+        // Check if next message is available
+        if (data.next) {
+          setMessage(data.next);
+
+          // Leave approve count empty for manual entry
+          setApproveValue("");
+        } else {
+          // No more messages
+          setMessage(null);
+          setApproveValue("");
+          setInfoMessage("✓ Approved. Queue is now empty.");
+        }
+      } else {
+        const error = await res.json();
+        setErrorMessage(error.error || "Failed to approve");
       }
-    } catch {}
+    } catch (err) {
+      setErrorMessage("Network error - failed to approve");
+      console.error("Approve error:", err);
+    }
+
     setLoadingApprove(false);
   }
 
@@ -518,54 +1144,98 @@ export default function HomePage() {
           createdAt: item.createdAt || item.updatedAt || item.date || "",
         })),
       );
-    } catch {}
+    } catch (err) {
+      console.error("Failed to fetch approvals:", err);
+    }
   }
 
   async function saveEdit(index: number) {
     const row = rows[index];
     const newValue = Number(editValue);
-    if (isNaN(newValue)) return;
+
+    if (isNaN(newValue) || newValue < 0) {
+      setErrorMessage("Please enter a valid count");
+      return;
+    }
 
     setLoadingEdit(index);
+    setErrorMessage("");
+
     try {
       const res = await fetch(`${API}/approval/${row._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ approved_count: newValue }),
       });
+
       if (res.ok) {
         setRows((r) =>
           r.map((x, i) => (i === index ? { ...x, updated: newValue } : x)),
         );
         setEditingIndex(null);
         setEditValue("");
+        setInfoMessage("✓ Count updated successfully");
+      } else {
+        setErrorMessage("Failed to update count");
       }
-    } catch {}
+    } catch (err) {
+      setErrorMessage("Network error - failed to update");
+      console.error("Edit error:", err);
+    }
+
     setLoadingEdit(null);
   }
 
   async function purgeQueue() {
     if (loadingPurge) return;
-    if (!confirm("Really clear the entire queue?")) return;
+    if (!confirm("⚠️ Really clear the entire queue? This cannot be undone."))
+      return;
 
     setLoadingPurge(true);
+    setErrorMessage("");
+
     try {
-      await fetch(`${API}/deleteAll`, { method: "POST" });
-      setRows([]);
-      setMessage(null);
-    } catch {}
+      const res = await fetch(`${API}/deleteAll`, { method: "POST" });
+
+      if (res.ok) {
+        setMessage(null);
+        setApproveValue("");
+        setInfoMessage("✓ Queue purged successfully");
+      } else {
+        setErrorMessage("Failed to purge queue");
+      }
+    } catch (err) {
+      setErrorMessage("Network error - failed to purge");
+      console.error("Purge error:", err);
+    }
+
     setLoadingPurge(false);
   }
 
   function openCompleteModal() {
-    if (!message?.body) return;
+    if (!message?.body) {
+      setErrorMessage("No message loaded to complete");
+      return;
+    }
     setCompleteTruck(message.body.truck_number || "");
     setCompleteDate(new Date().toISOString().split("T")[0]);
     setShowCompleteModal(true);
   }
 
   async function confirmComplete() {
+    if (!completeTruck.trim()) {
+      setErrorMessage("Please enter a truck number");
+      return;
+    }
+
+    if (!completeDate) {
+      setErrorMessage("Please select a date");
+      return;
+    }
+
     setLoadingComplete(true);
+    setErrorMessage("");
+
     try {
       const res = await fetch(`${API}/totals/complete`, {
         method: "PUT",
@@ -575,16 +1245,20 @@ export default function HomePage() {
           date: completeDate,
         }),
       });
+
       if (res.ok) {
         setShowCompleteModal(false);
-        alert("Truck marked as completed ✓");
+        setInfoMessage(`✓ ${completeTruck} marked as completed`);
         await fetchApprovals();
       } else {
-        alert("Failed to mark as complete");
+        const error = await res.json();
+        setErrorMessage(error.error || "Failed to mark as complete");
       }
-    } catch {
-      alert("Something went wrong");
+    } catch (err) {
+      setErrorMessage("Network error - failed to complete");
+      console.error("Complete error:", err);
     }
+
     setLoadingComplete(false);
   }
 
@@ -605,7 +1279,9 @@ export default function HomePage() {
       const id = new URL(data.youtube_url).searchParams.get("v");
       if (id)
         setVideoUrl(`https://www.youtube.com/embed/${id}?autoplay=1&mute=1`);
-    } catch {}
+    } catch (err) {
+      console.error("Failed to fetch stream:", err);
+    }
   }
 
   const total = rows.reduce((sum, r) => sum + r.updated, 0);
@@ -650,6 +1326,7 @@ export default function HomePage() {
 
       {/* Right – Controls & Data */}
       <div className="lg:w-2/5 flex flex-col h-[50vh] lg:h-screen overflow-hidden bg-gray-900/80 backdrop-blur-sm border-l border-gray-800">
+        {/* Header */}
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <h1 className="text-xl font-semibold flex items-center gap-2.5">
             <Truck className="w-6 h-6 text-emerald-400" />
@@ -660,8 +1337,13 @@ export default function HomePage() {
               onClick={fetchNext}
               disabled={loadingNext || loadingInitial}
               className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-600 rounded-lg transition text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+              title="Fetch next message (auto-skips duplicates)"
             >
-              {loadingNext && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loadingNext ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw size={16} />
+              )}
               Fetch Next
             </button>
 
@@ -669,6 +1351,7 @@ export default function HomePage() {
               onClick={purgeQueue}
               disabled={loadingPurge || loadingInitial}
               className="px-4 py-2 bg-red-600/70 hover:bg-red-600 rounded-lg transition text-sm font-medium disabled:opacity-50 flex items-center gap-1.5"
+              title="Clear entire queue"
             >
               {loadingPurge ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -680,11 +1363,29 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Error/Info Messages */}
+        {(errorMessage || infoMessage) && (
+          <div className="mx-5 mt-4">
+            {errorMessage && (
+              <div className="bg-red-900/30 border border-red-500/50 rounded-lg p-3 flex items-start gap-2 text-sm">
+                <AlertCircle className="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <span className="text-red-200">{errorMessage}</span>
+              </div>
+            )}
+            {infoMessage && (
+              <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-lg p-3 flex items-start gap-2 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <span className="text-emerald-200">{infoMessage}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex-1 p-5 space-y-6 overflow-y-auto">
           {/* Current Truck Card */}
           <div className="bg-gray-800/60 rounded-xl p-5 border border-gray-700/50">
             <h2 className="text-lg font-medium mb-4 flex items-center justify-between">
-              <span className="text-emerald-400">Current</span>
+              <span className="text-emerald-400">Current Truck</span>
               {loadingInitial && (
                 <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
               )}
@@ -696,36 +1397,51 @@ export default function HomePage() {
                 Loading current truck...
               </div>
             ) : message?.body ? (
-              <div className="flex gap-6 items-center text-sm">
-                <div>
-                  <div className="text-gray-400 text-xs mb-0.5">Truck</div>
-                  <div className="font-mono">{message.body.truck_number}</div>
+              <div className="space-y-4">
+                <div className="flex gap-6 items-center text-sm">
+                  <div>
+                    <div className="text-gray-400 text-xs mb-0.5">Truck</div>
+                    <div className="font-mono text-lg">
+                      {message.body.truck_number}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 text-xs mb-0.5">Count</div>
+                    <div className="font-semibold text-lg">
+                      {message.body.count}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-gray-400 text-xs mb-0.5">Count</div>
-                  <div className="font-semibold">{message.body.count}</div>
-                </div>
-                <div>
-                  <div className="text-gray-400 text-xs mb-0.5">Approve</div>
-                  <input
-                    value={approveValue}
-                    onChange={(e) => setApproveValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !loadingApprove) {
-                        e.preventDefault();
-                        approve();
-                      }
-                    }}
-                    disabled={loadingApprove}
-                    placeholder="Enter count"
-                    className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 w-[90px] focus:outline-none focus:border-indigo-500/60 transition disabled:opacity-60"
-                  />
-                </div>
-                <div className="flex gap-2">
+
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <label className="text-gray-400 text-xs mb-1.5 block">
+                      Approve Count
+                    </label>
+                    <input
+                      type="number"
+                      value={approveValue}
+                      onChange={(e) => setApproveValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          !loadingApprove &&
+                          approveValue.trim()
+                        ) {
+                          e.preventDefault();
+                          approve();
+                        }
+                      }}
+                      disabled={loadingApprove}
+                      placeholder="Enter count"
+                      className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 w-full focus:outline-none focus:border-indigo-500/60 transition disabled:opacity-60 font-medium"
+                    />
+                  </div>
+
                   <button
                     onClick={approve}
                     disabled={loadingApprove || !approveValue.trim()}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-500 px-4 py-2.5 rounded-lg transition font-medium flex items-center justify-center gap-1.5 disabled:opacity-60"
+                    className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-lg transition font-medium flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loadingApprove ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -734,10 +1450,11 @@ export default function HomePage() {
                     )}
                     Approve
                   </button>
+
                   <button
                     onClick={openCompleteModal}
                     disabled={loadingApprove}
-                    className="flex-1 bg-emerald-600/80 hover:bg-emerald-600 px-4 py-2.5 rounded-lg transition font-medium disabled:opacity-60"
+                    className="bg-emerald-600/80 hover:bg-emerald-600 px-6 py-2.5 rounded-lg transition font-medium disabled:opacity-60"
                   >
                     Complete
                   </button>
@@ -745,7 +1462,10 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="text-gray-500 py-8 text-center">
-                No message loaded
+                <div className="text-base mb-2">No message loaded</div>
+                <div className="text-sm">
+                  Click "Fetch Next" to load a message
+                </div>
               </div>
             )}
           </div>
@@ -755,8 +1475,9 @@ export default function HomePage() {
             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
               <h2 className="font-medium flex items-center gap-2">
                 Approved Trucks
-                {/* Optional: show loading when refreshing approvals */}
-                {/* {loadingApprovals && <Loader2 className="h-4 w-4 animate-spin" />} */}
+                <span className="text-gray-500 text-sm font-normal">
+                  ({rows.length})
+                </span>
               </h2>
               <div className="text-sm text-emerald-400 font-medium">
                 Total: <span className="text-lg">{total}</span>
@@ -800,12 +1521,18 @@ export default function HomePage() {
                         <td className="p-4">
                           {editingIndex === i ? (
                             <input
+                              type="number"
                               autoFocus
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
-                              onKeyDown={(e) =>
-                                e.key === "Enter" && !loadingEdit && saveEdit(i)
-                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !loadingEdit) {
+                                  saveEdit(i);
+                                } else if (e.key === "Escape") {
+                                  setEditingIndex(null);
+                                  setEditValue("");
+                                }
+                              }}
                               disabled={loadingEdit !== null}
                               className="bg-gray-950 border border-gray-600 rounded px-2.5 py-1 w-20 focus:outline-none focus:border-indigo-500 disabled:opacity-60"
                             />
@@ -823,6 +1550,7 @@ export default function HomePage() {
                                 onClick={() => saveEdit(i)}
                                 disabled={loadingEdit !== null}
                                 className="p-1.5 bg-emerald-600/70 hover:bg-emerald-600 rounded transition disabled:opacity-50"
+                                title="Save changes"
                               >
                                 {loadingEdit === i ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -831,9 +1559,13 @@ export default function HomePage() {
                                 )}
                               </button>
                               <button
-                                onClick={() => setEditingIndex(null)}
+                                onClick={() => {
+                                  setEditingIndex(null);
+                                  setEditValue("");
+                                }}
                                 disabled={loadingEdit !== null}
                                 className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded transition disabled:opacity-50"
+                                title="Cancel"
                               >
                                 <X size={16} />
                               </button>
@@ -846,6 +1578,7 @@ export default function HomePage() {
                               }}
                               disabled={loadingEdit !== null}
                               className="p-1.5 bg-amber-600/60 hover:bg-amber-600 rounded transition disabled:opacity-50"
+                              title="Edit count"
                             >
                               <Edit2 size={16} />
                             </button>
@@ -878,7 +1611,8 @@ export default function HomePage() {
                   value={completeTruck}
                   onChange={(e) => setCompleteTruck(e.target.value)}
                   disabled={loadingComplete}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500/60 disabled:opacity-60"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500/60 disabled:opacity-60 font-mono"
+                  placeholder="Enter truck number"
                 />
               </div>
               <div>
@@ -903,7 +1637,9 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={confirmComplete}
-                  disabled={loadingComplete}
+                  disabled={
+                    loadingComplete || !completeTruck.trim() || !completeDate
+                  }
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition font-medium flex items-center gap-2 disabled:opacity-50"
                 >
                   {loadingComplete && (
