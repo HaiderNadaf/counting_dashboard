@@ -919,6 +919,7 @@
 //     </div>
 //   );
 // }
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -1004,7 +1005,6 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
         setMessage(data);
-        // Don't auto-populate - leave empty for manual entry
       }
     } catch (err) {
       console.error("Failed to fetch cached message:", err);
@@ -1022,7 +1022,6 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
 
-        // Check if queue is empty
         if (data?.empty) {
           setMessage(null);
           setApproveValue("");
@@ -1031,17 +1030,13 @@ export default function HomePage() {
           return;
         }
 
-        // Check if message was expired
         if (data?.expired) {
           setErrorMessage("Previous message expired. Fetched new message.");
         }
 
         setMessage(data);
-
-        // Don't auto-populate - leave empty for manual entry
         setApproveValue("");
 
-        // Show info if duplicates were skipped (you can add this to backend response)
         if (data?.skippedDuplicates > 0) {
           setInfoMessage(
             `Skipped ${data.skippedDuplicates} duplicate message(s)`,
@@ -1049,7 +1044,6 @@ export default function HomePage() {
         }
       } else if (res.status === 410) {
         setErrorMessage("Message expired. Fetching new message...");
-        // Retry once
         setTimeout(() => fetchNext(), 1000);
       } else {
         setErrorMessage("Failed to fetch next message");
@@ -1066,8 +1060,8 @@ export default function HomePage() {
     if (!message || loadingApprove) return;
 
     const approveCount = Number(approveValue);
-    if (isNaN(approveCount) || approveCount < 0) {
-      setErrorMessage("Please enter a valid count");
+    if (isNaN(approveCount)) {
+      setErrorMessage("Please enter a valid number");
       return;
     }
 
@@ -1086,7 +1080,6 @@ export default function HomePage() {
       });
 
       if (res.status === 410) {
-        // Message expired
         setErrorMessage("Message expired. Please fetch a new message.");
         setMessage(null);
         setApproveValue("");
@@ -1098,21 +1091,17 @@ export default function HomePage() {
         const data = await res.json();
 
         if (data.record) {
-          // Refresh approvals list
           await fetchApprovals();
+          const sign = approveCount >= 0 ? "+" : "";
           setInfoMessage(
-            `✓ Approved: ${message.body.truck_number} - ${approveCount} items`,
+            `✓ Approved: ${message.body.truck_number} - ${sign}${approveCount} items`,
           );
         }
 
-        // Check if next message is available
         if (data.next) {
           setMessage(data.next);
-
-          // Leave approve count empty for manual entry
           setApproveValue("");
         } else {
-          // No more messages
           setMessage(null);
           setApproveValue("");
           setInfoMessage("✓ Approved. Queue is now empty.");
@@ -1153,8 +1142,8 @@ export default function HomePage() {
     const row = rows[index];
     const newValue = Number(editValue);
 
-    if (isNaN(newValue) || newValue < 0) {
-      setErrorMessage("Please enter a valid count");
+    if (isNaN(newValue)) {
+      setErrorMessage("Please enter a valid number");
       return;
     }
 
@@ -1417,9 +1406,13 @@ export default function HomePage() {
                   <div className="flex-1">
                     <label className="text-gray-400 text-xs mb-1.5 block">
                       Approve Count
+                      <span className="ml-2 text-gray-500 text-[10px]">
+                        (use - for returns)
+                      </span>
                     </label>
                     <input
                       type="number"
+                      step="1"
                       value={approveValue}
                       onChange={(e) => setApproveValue(e.target.value)}
                       onKeyDown={(e) => {
@@ -1433,7 +1426,7 @@ export default function HomePage() {
                         }
                       }}
                       disabled={loadingApprove}
-                      placeholder="Enter count"
+                      placeholder="Enter count (e.g., 100 or -5)"
                       className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 w-full focus:outline-none focus:border-indigo-500/60 transition disabled:opacity-60 font-medium"
                     />
                   </div>
@@ -1479,8 +1472,16 @@ export default function HomePage() {
                   ({rows.length})
                 </span>
               </h2>
-              <div className="text-sm text-emerald-400 font-medium">
-                Total: <span className="text-lg">{total}</span>
+              <div className="text-sm font-medium">
+                Total:{" "}
+                <span
+                  className={`text-lg ${
+                    total >= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {total >= 0 ? "+" : ""}
+                  {total}
+                </span>
               </div>
             </div>
 
@@ -1522,6 +1523,7 @@ export default function HomePage() {
                           {editingIndex === i ? (
                             <input
                               type="number"
+                              step="1"
                               autoFocus
                               value={editValue}
                               onChange={(e) => setEditValue(e.target.value)}
@@ -1537,7 +1539,14 @@ export default function HomePage() {
                               className="bg-gray-950 border border-gray-600 rounded px-2.5 py-1 w-20 focus:outline-none focus:border-indigo-500 disabled:opacity-60"
                             />
                           ) : (
-                            <span className="font-medium">{row.updated}</span>
+                            <span
+                              className={`font-medium ${
+                                row.updated < 0 ? "text-red-400" : ""
+                              }`}
+                            >
+                              {row.updated >= 0 ? "+" : ""}
+                              {row.updated}
+                            </span>
                           )}
                         </td>
                         <td className="p-4 text-gray-300">
