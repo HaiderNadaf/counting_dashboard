@@ -1746,6 +1746,11 @@ export default function HomePage() {
   const [showPlaybackModal, setShowPlaybackModal] = useState(false);
   const [completeTruck, setCompleteTruck] = useState("");
   const [completeDate, setCompleteDate] = useState("");
+  const [filterTruck, setFilterTruck] = useState("");
+  const [filterDate, setFilterDate] = useState("");
+  const [approvalsPage, setApprovalsPage] = useState(1);
+  const [approvalsTotalPages, setApprovalsTotalPages] = useState(1);
+  const [approvalsTotalCount, setApprovalsTotalCount] = useState(0);
 
   useEffect(() => {
     const init = async () => {
@@ -2000,11 +2005,39 @@ export default function HomePage() {
     setLoadingApprove(false);
   }
 
-  async function fetchApprovals() {
+  async function fetchApprovals(filters?: {
+    truck_number?: string;
+    date?: string;
+    page?: number;
+  }) {
     try {
-      const res = await fetch(`${API}/approvals`);
+      const truckNumber = filters?.truck_number ?? filterTruck;
+      const date = filters?.date ?? filterDate;
+      const page = filters?.page ?? approvalsPage;
+      const params = new URLSearchParams();
+
+      if (truckNumber.trim()) {
+        params.set("truck_number", truckNumber.trim());
+      }
+
+      if (date) {
+        params.set("date", date);
+      }
+
+      params.set("page", String(page));
+      params.set("limit", "800");
+
+      const query = params.toString();
+      const res = await fetch(`${API}/approvals${query ? `?${query}` : ""}`, {
+        cache: "no-store",
+      });
       if (!res.ok) return;
-      const data = await res.json();
+      const payload = await res.json();
+      const data = Array.isArray(payload) ? payload : payload.data || [];
+      const pagination = Array.isArray(payload)
+        ? null
+        : payload.pagination || null;
+
       setRows(
         data.map((item: any) => ({
           _id: item._id || "",
@@ -2014,7 +2047,27 @@ export default function HomePage() {
           createdAt: item.createdAt || item.updatedAt || item.date || "",
         })),
       );
+
+      if (pagination) {
+        setApprovalsPage(Number(pagination.page) || 1);
+        setApprovalsTotalPages(Number(pagination.totalPages) || 1);
+        setApprovalsTotalCount(Number(pagination.total) || 0);
+      } else {
+        setApprovalsPage(1);
+        setApprovalsTotalPages(1);
+        setApprovalsTotalCount(data.length);
+      }
     } catch {}
+  }
+
+  async function applyApprovalFilters() {
+    await fetchApprovals({ page: 1 });
+  }
+
+  async function clearApprovalFilters() {
+    setFilterTruck("");
+    setFilterDate("");
+    await fetchApprovals({ truck_number: "", date: "", page: 1 });
   }
 
   async function saveEdit(index: number) {
@@ -2080,6 +2133,34 @@ export default function HomePage() {
     setShowCompleteModal(true);
   }
 
+  function buildCompletePayload() {
+    const selectedTruck = (completeTruck || "").trim().toLowerCase();
+    const matchingRows = rows.filter((row) => {
+      if ((row.truck_number || "").trim().toLowerCase() !== selectedTruck) {
+        return false;
+      }
+
+      if (!row.createdAt) {
+        return false;
+      }
+
+      const rowDate = new Date(row.createdAt);
+      if (Number.isNaN(rowDate.getTime())) {
+        return false;
+      }
+
+      return rowDate.toISOString().slice(0, 10) === completeDate;
+    });
+
+    return {
+      entries: matchingRows.length,
+      totalApproved: matchingRows.reduce(
+        (sum, row) => sum + (Number(row.updated) || 0),
+        0,
+      ),
+    };
+  }
+
   async function confirmComplete() {
     if (!(completeTruck || "").trim()) {
       setErrorMessage("Please enter a truck number");
@@ -2092,12 +2173,15 @@ export default function HomePage() {
     setLoadingComplete(true);
     setErrorMessage("");
     try {
+      const { entries, totalApproved } = buildCompletePayload();
       const res = await fetch(`${API}/totals/complete`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           truck_number: completeTruck,
           date: completeDate,
+          entries,
+          totalApproved,
         }),
       });
       if (res.ok) {
@@ -2368,7 +2452,7 @@ export default function HomePage() {
               <h2 className="font-medium flex items-center gap-2">
                 Approved Trucks
                 <span className="text-gray-500 text-sm font-normal">
-                  ({rows.length})
+                  ({approvalsTotalCount})
                 </span>
               </h2>
               <div className="text-sm font-medium">
@@ -2379,6 +2463,46 @@ export default function HomePage() {
                   {total >= 0 ? "+" : ""}
                   {total}
                 </span>
+              </div>
+            </div>
+
+            <div className="p-4 border-b border-gray-700/70 bg-gray-900/30">
+              <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_180px_auto_auto] gap-3">
+                <input
+                  value={filterTruck}
+                  onChange={(e) => setFilterTruck(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      applyApprovalFilters();
+                    }
+                  }}
+                  placeholder="Filter by truck number"
+                  className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 w-full focus:outline-none focus:border-indigo-500/60 font-mono"
+                />
+                <input
+                  type="date"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      applyApprovalFilters();
+                    }
+                  }}
+                  style={{ colorScheme: "dark" }}
+                  className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 w-full focus:outline-none focus:border-indigo-500/60"
+                />
+                <button
+                  onClick={applyApprovalFilters}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition font-medium"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={clearApprovalFilters}
+                  className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition font-medium"
+                >
+                  Clear
+                </button>
               </div>
             </div>
 
@@ -2491,6 +2615,36 @@ export default function HomePage() {
                 </tbody>
               </table>
             </div>
+
+            <div className="p-4 border-t border-gray-700/70 bg-gray-900/20 flex items-center justify-between gap-3">
+              <div className="text-sm text-gray-400">
+                Page {approvalsPage} of {approvalsTotalPages}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    fetchApprovals({
+                      page: Math.max(1, approvalsPage - 1),
+                    })
+                  }
+                  disabled={approvalsPage <= 1}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition text-sm font-medium disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() =>
+                    fetchApprovals({
+                      page: Math.min(approvalsTotalPages, approvalsPage + 1),
+                    })
+                  }
+                  disabled={approvalsPage >= approvalsTotalPages}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition text-sm font-medium disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2525,6 +2679,7 @@ export default function HomePage() {
                   value={completeDate}
                   onChange={(e) => setCompleteDate(e.target.value)}
                   disabled={loadingComplete}
+                  style={{ colorScheme: "dark" }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:border-emerald-500/60 disabled:opacity-60"
                 />
               </div>
