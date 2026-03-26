@@ -1761,6 +1761,45 @@ export default function HomePage() {
     init();
   }, []);
 
+  function handleVideoSeekKey(key: string) {
+    if (
+      showPlaybackModal ||
+      showCompleteModal ||
+      !playerRef.current?.getCurrentTime ||
+      !playerRef.current?.seekTo
+    ) {
+      return false;
+    }
+
+    const currentTime = Number(playerRef.current.getCurrentTime?.() ?? 0);
+    const duration = Number(playerRef.current.getDuration?.() ?? 0);
+
+    if (key === playbackConfig.forwardKey) {
+      const nextTime = duration
+        ? Math.min(currentTime + playbackConfig.forwardSeconds, duration)
+        : currentTime + playbackConfig.forwardSeconds;
+      playerRef.current.seekTo(nextTime, true);
+      setInfoMessage(
+        `Forwarded ${playbackConfig.forwardSeconds}s with ${playbackConfig.forwardKey}`,
+      );
+      return true;
+    }
+
+    if (key === playbackConfig.backwardKey) {
+      const nextTime = Math.max(
+        currentTime - playbackConfig.backwardSeconds,
+        0,
+      );
+      playerRef.current.seekTo(nextTime, true);
+      setInfoMessage(
+        `Rewind ${playbackConfig.backwardSeconds}s with ${playbackConfig.backwardKey}`,
+      );
+      return true;
+    }
+
+    return false;
+  }
+
   useEffect(() => {
     const win = window as typeof window & {
       YT?: {
@@ -1826,33 +1865,10 @@ export default function HomePage() {
         tagName === "textarea" ||
         tagName === "select";
 
-      if (isTypingTarget || showPlaybackModal || showCompleteModal) return;
-      if (!playerRef.current?.getCurrentTime || !playerRef.current?.seekTo)
-        return;
+      if (isTypingTarget) return;
 
-      const key = event.key;
-      const currentTime = Number(playerRef.current.getCurrentTime?.() ?? 0);
-      const duration = Number(playerRef.current.getDuration?.() ?? 0);
-
-      if (key === playbackConfig.forwardKey) {
+      if (handleVideoSeekKey(event.key)) {
         event.preventDefault();
-        const nextTime = duration
-          ? Math.min(currentTime + playbackConfig.forwardSeconds, duration)
-          : currentTime + playbackConfig.forwardSeconds;
-        playerRef.current.seekTo(nextTime, true);
-        setInfoMessage(
-          `Forwarded ${playbackConfig.forwardSeconds}s with ${playbackConfig.forwardKey}`,
-        );
-      } else if (key === playbackConfig.backwardKey) {
-        event.preventDefault();
-        const nextTime = Math.max(
-          currentTime - playbackConfig.backwardSeconds,
-          0,
-        );
-        playerRef.current.seekTo(nextTime, true);
-        setInfoMessage(
-          `Rewind ${playbackConfig.backwardSeconds}s with ${playbackConfig.backwardKey}`,
-        );
       }
     };
 
@@ -2302,6 +2318,12 @@ export default function HomePage() {
                       value={approveValue}
                       onChange={(e) => setApproveValue(e.target.value)}
                       onKeyDown={(e) => {
+                        if (handleVideoSeekKey(e.key)) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          return;
+                        }
+
                         if (
                           e.key === "Enter" &&
                           !loadingApprove &&
