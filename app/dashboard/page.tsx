@@ -2218,7 +2218,7 @@ export default function HomePage() {
               Fetch Next
             </button>
             <button
-              onClick={openCompleteModal}
+              onClick={() => openCompleteModal()}
               disabled={loadingApprove}
               className="bg-emerald-600/80 hover:bg-emerald-600 px-6 py-2.5 rounded-lg transition font-medium disabled:opacity-60"
             >
